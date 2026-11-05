@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buscador de Clientes - SGD</title>
     
-    <!-- Librería para leer el Excel (SheetJS) -->
+    <!-- Librería para leer el Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     
     <style>
@@ -206,15 +206,15 @@
     <script>
         let clientes = [];
 
-        // ✅ URL CORREGIDA: Usa raw.githubusercontent.com directamente
-        const EXCEL_URL = 'https://raw.githubusercontent.com/LEAVERA77/Buscarclientes2026/main/Clientes%20con%20coordenadas-Maria%20Grande%202026.xlsx';
+        // ✅ RUTA LOCAL: Busca el archivo Excel en la misma carpeta que este index.html
+        const EXCEL_URL = 'Clientes%20con%20coordenadas-Maria%20Grande%202026.xlsx';
 
         async function cargarDatosDesdeGitHub() {
             try {
                 const response = await fetch(EXCEL_URL);
                 
                 if (!response.ok) {
-                    throw new Error("No se pudo descargar el archivo. Verifica tu conexión a internet.");
+                    throw new Error("No se pudo descargar el archivo Excel. Verifica que esté subido en esta misma carpeta.");
                 }
                 
                 const arrayBuffer = await response.arrayBuffer();
