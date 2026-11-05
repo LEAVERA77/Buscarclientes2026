@@ -11,7 +11,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             color: #333;
         }
         .container {
@@ -26,6 +26,7 @@
             text-align: center;
             color: #2c3e50;
             margin-bottom: 10px;
+            font-size: 24px;
         }
         .upload-section {
             background-color: #e8f4fd;
@@ -86,6 +87,12 @@
             gap: 10px;
             margin-bottom: 15px;
         }
+        /* Para que en celulares se vea en una sola columna */
+        @media (max-width: 600px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         .info-item {
             font-size: 14px;
             word-break: break-word;
@@ -98,14 +105,22 @@
             align-items: center;
             background-color: #27ae60;
             color: white;
-            padding: 10px 15px;
+            padding: 12px 20px;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: bold;
             transition: background-color 0.3s;
+            width: 100%;
+            box-sizing: border-box;
+            justify-content: center;
         }
         .btn-maps:hover {
             background-color: #219150;
+        }
+        .btn-maps.disabled {
+            background-color: #95a5a6;
+            pointer-events: none;
+            cursor: default;
         }
         .btn-maps svg {
             margin-right: 8px;
@@ -118,6 +133,9 @@
             color: #e74c3c;
             font-weight: bold;
         }
+        .status-msg {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -127,9 +145,9 @@
         
         <!-- SECCIÓN PARA CARGAR EL ARCHIVO EXCEL -->
         <div class="upload-section">
-            <p><strong>Paso 1:</strong> Cargá tu archivo Excel (Clientes con coordenadas-Maria Grande 2026.xlsx)</p>
-            <input type="file" id="fileInput" accept=".xlsx"><br><br>
-            <span id="fileStatus" style="font-weight: bold; color: #e67e22;">Ningún archivo cargado.</span>
+            <p><strong>Paso 1:</strong> Cargá tu archivo Excel de clientes</p>
+            <input type="file" id="fileInput" accept=".xlsx, .xls"><br><br>
+            <span id="fileStatus" class="status-msg" style="color: #e67e22;">Ningún archivo cargado.</span>
         </div>
 
         <!-- SECCIÓN DE BÚSQUEDA -->
@@ -145,45 +163,51 @@
     </div>
 
     <script>
-        // Variable global donde guardaremos los datos
+        // Variable global para guardar los datos del Excel
         let clientes = [];
 
-        // Escuchar cuando el usuario selecciona el archivo XLSX
+        // Escuchar cuando el usuario selecciona el archivo
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('fileStatus').textContent = "Leyendo archivo...";
-            document.getElementById('fileStatus').style.color = "#3498db";
+            const statusSpan = document.getElementById('fileStatus');
+            statusSpan.textContent = "Leyendo archivo...";
+            statusSpan.style.color = "#3498db";
 
             const reader = new FileReader();
             
             reader.onload = function(event) {
-                const data = new Uint8Array(event.target.result);
-                // Leer el libro de Excel
-                const workbook = XLSX.read(data, { type: 'array' });
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
 
-                // Tomar la primera hoja (Hoja1)
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
+                    // Tomar la primera hoja
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
 
-                // Convertir la hoja a un array de objetos JSON
-                // defval: "" asegura que las celdas vacías no rompan el código
-                clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    // Convertir a JSON (defval: "" evita errores con celdas vacías)
+                    clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                // Habilitar buscador
-                const searchInput = document.getElementById('searchInput');
-                searchInput.disabled = false;
-                searchInput.focus();
-                
-                document.getElementById('fileStatus').textContent = `✅ Archivo cargado con éxito (${clientes.length} registros).`;
-                document.getElementById('fileStatus').style.color = "#27ae60";
+                    // Habilitar buscador
+                    const searchInput = document.getElementById('searchInput');
+                    searchInput.disabled = false;
+                    searchInput.focus();
+                    
+                    statusSpan.textContent = `✅ Archivo cargado (${clientes.length} registros).`;
+                    statusSpan.style.color = "#27ae60";
 
-                document.getElementById('resultados').innerHTML = `
-                    <div style="text-align: center; color: #27ae60; font-weight: bold;">
-                        <p>Escribe un NIS para buscar.</p>
-                    </div>
-                `;
+                    document.getElementById('resultados').innerHTML = `
+                        <div style="text-align: center; color: #27ae60; font-weight: bold;">
+                            <p>Excelente. Escribe un NIS arriba para buscar.</p>
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error(error);
+                    alert("Error al procesar el archivo. Asegúrate de que sea un Excel válido.");
+                    statusSpan.textContent = "Error al leer el archivo.";
+                    statusSpan.style.color = "#e74c3c";
+                }
             };
 
             reader.onerror = function() {
@@ -192,22 +216,20 @@
                 document.getElementById('fileStatus').style.color = "#e74c3c";
             };
 
-            // Leer como ArrayBuffer (necesario para XLSX)
             reader.readAsArrayBuffer(file); 
         });
 
         function buscarCliente() {
+            // Quitamos espacios en blanco al inicio y final
             const input = document.getElementById('searchInput').value.trim();
             const resultadosDiv = document.getElementById('resultados');
-            resultadosDiv.innerHTML = '';
 
             if (input === '') {
                 resultadosDiv.innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS para buscar.</p></div>';
                 return;
             }
 
-            // Buscar en el array. Nota: Los encabezados del Excel se convierten en las propiedades del objeto.
-            // Por lo tanto, la columna "NIS" será la propiedad cliente.NIS
+            // Filtramos asegurándonos de comparar texto con texto y sin espacios extra
             const coincidencias = clientes.filter(c => String(c.NIS).trim() === input);
 
             if (coincidencias.length === 0) {
@@ -216,24 +238,29 @@
             }
 
             // Renderizar resultados
+            resultadosDiv.innerHTML = ''; // Limpiar resultados anteriores
+            
             coincidencias.forEach(cliente => {
-                // Usamos los nombres exactos de tus columnas en el Excel
-                const lat = cliente['COORDENADA_LATITUD'] || '';
-                const lng = cliente['COORDENADA_LONGITUD'] || '';
+                // Validar si las columnas de coordenadas existen y tienen datos
+                const lat = String(cliente['COORDENADA_LATITUD'] || '').replace(',', '.').trim(); // Reemplaza coma por punto por si acaso
+                const lng = String(cliente['COORDENADA_LONGITUD'] || '').replace(',', '.').trim();
                 
                 let linkMaps = '#';
-                let btnDisabled = 'style="background-color: #95a5a6; pointer-events: none;"';
+                let btnClass = 'btn-maps disabled';
                 
-                // Validar coordenadas
+                // Validar que las coordenadas sean números reales
                 if (lat !== '' && lng !== '' && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                    // Enlace oficial de Google Maps API (abre app en Android, web en PC)
                     linkMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-                    btnDisabled = ''; 
+                    btnClass = 'btn-maps'; 
                 }
 
                 const card = document.createElement('div');
                 card.className = 'card';
+                
+                // Usamos operadores lógicos OR (||) para evitar que muestre "undefined" si la columna no existe
                 card.innerHTML = `
-                    <h2>${cliente.NOMBRE || 'Sin Nombre'} (NIS: ${cliente.NIS})</h2>
+                    <h2>${cliente.NOMBRE || 'Sin Nombre'} (NIS: ${cliente.NIS || input})</h2>
                     
                     <div class="info-grid">
                         <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
@@ -241,22 +268,22 @@
                         <div class="info-item"><strong>N° Puerta:</strong> ${cliente['N° PUERTA'] || '-'}</div>
                         <div class="info-item"><strong>SETD:</strong> ${cliente.SETD || '-'}</div>
                         <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
-                        <div class="info-item"><strong>Coordenadas:</strong> ${lat}, ${lng}</div>
+                        <div class="info-item"><strong>Coordenadas:</strong> ${lat && lng ? lat + ', ' + lng : 'No disponibles'}</div>
                     </div>
 
-                    <a href="${linkMaps}" target="_blank" class="btn-maps" ${btnDisabled}>
+                    <a href="${linkMaps}" target="_blank" rel="noopener noreferrer" class="${btnClass}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                         </svg>
-                        Ver en Google Maps
+                        ${linkMaps !== '#' ? 'Ver ubicación en Google Maps' : 'Sin coordenadas'}
                     </a>
                 `;
                 resultadosDiv.appendChild(card);
             });
         }
 
-        // Buscar al presionar "Enter"
+        // Buscar al presionar "Enter" o "Intro"
         document.getElementById('searchInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 buscarCliente();
