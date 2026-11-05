@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador de Clientes por NIS</title>
+    <!-- Librería para leer Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -38,9 +40,6 @@
             font-size: 14px;
             color: #555;
         }
-        input[type="file"] {
-            margin-bottom: 10px;
-        }
         .search-box {
             display: flex;
             gap: 10px;
@@ -60,23 +59,6 @@
         }
         input[type="text"]:disabled {
             background-color: #eee;
-            cursor: not-allowed;
-        }
-        button {
-            padding: 12px 20px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
-        button:disabled {
-            background-color: #95a5a6;
             cursor: not-allowed;
         }
         .card {
@@ -143,10 +125,11 @@
     <div class="container">
         <h1>Buscador de Clientes</h1>
         
-        <!-- SECCIÓN PARA CARGAR EL ARCHIVO -->
+        <!-- SECCIÓN PARA CARGAR EL ARCHIVO EXCEL -->
         <div class="upload-section">
-            <p><strong>Paso 1:</strong> Cargá tu archivo Excel o CSV original</p>
-            <input type="file" id="fileInput" accept=".csv">
+            <p><strong>Paso 1:</strong> Cargá tu archivo Excel (Clientes con coordenadas-Maria Grande 2026.xlsx)</p>
+            <input type="file" id="fileInput" accept=".xlsx"><br><br>
+            <span id="fileStatus" style="font-weight: bold; color: #e67e22;">Ningún archivo cargado.</span>
         </div>
 
         <!-- SECCIÓN DE BÚSQUEDA -->
@@ -156,53 +139,48 @@
 
         <div id="resultados">
             <div style="text-align: center; color: #7f8c8d;">
-                <p>Por favor, carga el archivo CSV para habilitar el buscador.</p>
+                <p>Por favor, carga el archivo Excel para habilitar el buscador.</p>
             </div>
         </div>
     </div>
 
     <script>
-        // Variable global donde se guardarán los datos procesados
+        // Variable global donde guardaremos los datos
         let clientes = [];
 
-        // Escuchar cuando el usuario selecciona un archivo
+        // Escuchar cuando el usuario selecciona el archivo XLSX
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
+            document.getElementById('fileStatus').textContent = "Leyendo archivo...";
+            document.getElementById('fileStatus').style.color = "#3498db";
+
             const reader = new FileReader();
             
             reader.onload = function(event) {
-                const text = event.target.result;
-                
-                // Separar por saltos de línea
-                const lines = text.split(/\r?\n/);
-                const headers = lines[0].split(';').map(h => h.trim());
-                
-                clientes = []; // Limpiar array
+                const data = new Uint8Array(event.target.result);
+                // Leer el libro de Excel
+                const workbook = XLSX.read(data, { type: 'array' });
 
-                // Procesar cada línea
-                for (let i = 1; i < lines.length; i++) {
-                    const currentLine = lines[i].split(';');
-                    if (currentLine.length < headers.length) continue;
+                // Tomar la primera hoja (Hoja1)
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
 
-                    let obj = {};
-                    headers.forEach((header, index) => {
-                        // Limpiar comillas dobles y espacios
-                        let val = currentLine[index] ? currentLine[index].replace(/"/g, '').trim() : '';
-                        obj[header] = val;
-                    });
-                    clientes.push(obj);
-                }
+                // Convertir la hoja a un array de objetos JSON
+                // defval: "" asegura que las celdas vacías no rompan el código
+                clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                // Habilitar el buscador
+                // Habilitar buscador
                 const searchInput = document.getElementById('searchInput');
                 searchInput.disabled = false;
                 searchInput.focus();
                 
+                document.getElementById('fileStatus').textContent = `✅ Archivo cargado con éxito (${clientes.length} registros).`;
+                document.getElementById('fileStatus').style.color = "#27ae60";
+
                 document.getElementById('resultados').innerHTML = `
                     <div style="text-align: center; color: #27ae60; font-weight: bold;">
-                        <p>✅ Archivo cargado con éxito (${clientes.length} registros).</p>
                         <p>Escribe un NIS para buscar.</p>
                     </div>
                 `;
@@ -210,10 +188,12 @@
 
             reader.onerror = function() {
                 alert("Error al leer el archivo.");
+                document.getElementById('fileStatus').textContent = "Error al leer el archivo.";
+                document.getElementById('fileStatus').style.color = "#e74c3c";
             };
 
-            // Leer como texto usando ISO-8859-1 para preservar los acentos y la letra Ñ
-            reader.readAsText(file, 'ISO-8859-1'); 
+            // Leer como ArrayBuffer (necesario para XLSX)
+            reader.readAsArrayBuffer(file); 
         });
 
         function buscarCliente() {
@@ -226,8 +206,9 @@
                 return;
             }
 
-            // Buscar en el array
-            const coincidencias = clientes.filter(c => c.NIS === input);
+            // Buscar en el array. Nota: Los encabezados del Excel se convierten en las propiedades del objeto.
+            // Por lo tanto, la columna "NIS" será la propiedad cliente.NIS
+            const coincidencias = clientes.filter(c => String(c.NIS).trim() === input);
 
             if (coincidencias.length === 0) {
                 resultadosDiv.innerHTML = `<div class="no-results">No se encontró ningún cliente con el NIS: ${input}</div>`;
@@ -236,6 +217,7 @@
 
             // Renderizar resultados
             coincidencias.forEach(cliente => {
+                // Usamos los nombres exactos de tus columnas en el Excel
                 const lat = cliente['COORDENADA_LATITUD'] || '';
                 const lng = cliente['COORDENADA_LONGITUD'] || '';
                 
