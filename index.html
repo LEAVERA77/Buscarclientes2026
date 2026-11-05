@@ -2,183 +2,139 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Buscador de Clientes - SGD</title>
-    
-    <!-- Cargamos nuestro archivo de datos local -->
-    <script src="datos.js"></script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Clientes por NIS</title>
     <style>
-        :root {
-            --primary-color: #2980b9;
-            --success-color: #27ae60;
-            --bg-color: #f5f7fa;
-            --text-color: #2c3e50;
-        }
-        
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
             margin: 0;
-            padding: 15px;
-            color: var(--text-color);
+            padding: 20px;
+            color: #333;
         }
-
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-
         h1 {
             text-align: center;
-            font-size: 22px;
-            margin-bottom: 5px;
-            color: #1a252f;
+            color: #2c3e50;
+            margin-bottom: 10px;
         }
-        
-        .subtitle {
-            text-align: center;
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 20px;
-        }
-
-        .status-box {
+        .upload-section {
             background-color: #e8f4fd;
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 8px;
             margin-bottom: 20px;
             text-align: center;
-            border: 2px dashed var(--primary-color);
-            font-size: 15px;
+            border: 2px dashed #3498db;
         }
-
-        .search-container {
-            position: sticky;
-            top: 0;
-            background-color: var(--bg-color);
-            padding: 10px 0;
-            z-index: 100;
+        .upload-section p {
+            margin-top: 0;
+            font-size: 14px;
+            color: #555;
         }
-
-        input[type="number"] {
-            width: 100%;
-            padding: 15px;
-            font-size: 18px;
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            font-size: 16px;
             border: 2px solid #bdc3c7;
-            border-radius: 10px;
+            border-radius: 8px;
             outline: none;
-            background-color: white;
             transition: border-color 0.3s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            -moz-appearance: textfield;
-            appearance: textfield;
         }
-
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        input[type="text"]:focus {
+            border-color: #3498db;
         }
-
-        input[type="number"]:focus {
-            border-color: var(--primary-color);
-        }
-
-        input[type="number"]:disabled {
-            background-color: #e0e0e0;
+        input[type="text"]:disabled {
+            background-color: #eee;
             cursor: not-allowed;
         }
-
+        button {
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
         .card {
-            background: white;
-            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
             padding: 20px;
             margin-bottom: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-            animation: slideUp 0.3s ease-out;
+            background-color: #fafafa;
+            animation: fadeIn 0.4s ease-in-out;
         }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(15px); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         .card h2 {
             margin-top: 0;
+            color: #2c3e50;
             font-size: 18px;
-            color: var(--text-color);
-            border-bottom: 2px solid var(--primary-color);
+            border-bottom: 2px solid #3498db;
             padding-bottom: 10px;
-            margin-bottom: 15px;
-            line-height: 1.3;
         }
-
         .info-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
         }
-
         .info-item {
-            font-size: 15px;
-            line-height: 1.4;
-            border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 8px;
+            font-size: 14px;
+            word-break: break-word;
         }
-
         .info-item strong {
-            color: #34495e;
-            display: inline-block;
-            width: 110px;
+            color: #555;
         }
-
         .btn-maps {
-            display: flex;
-            justify-content: center;
+            display: inline-flex;
             align-items: center;
-            background-color: var(--success-color);
+            background-color: #27ae60;
             color: white;
-            padding: 15px;
+            padding: 10px 15px;
             text-decoration: none;
-            border-radius: 10px;
+            border-radius: 6px;
             font-weight: bold;
-            font-size: 16px;
-            box-shadow: 0 3px 6px rgba(39, 174, 96, 0.3);
-            transition: background-color 0.2s, transform 0.1s;
+            transition: background-color 0.3s;
         }
-
-        .btn-maps:active {
+        .btn-maps:hover {
             background-color: #219150;
-            transform: scale(0.98);
         }
-
         .btn-maps svg {
-            margin-right: 10px;
-            width: 24px;
-            height: 24px;
+            margin-right: 8px;
+            width: 20px;
+            height: 20px;
         }
-
-        .btn-maps.disabled {
-            background-color: #95a5a6;
-            pointer-events: none;
-            box-shadow: none;
-        }
-
         .no-results {
             text-align: center;
-            padding: 30px 20px;
-            background-color: white;
-            border-radius: 10px;
+            padding: 20px;
             color: #e74c3c;
             font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
     </style>
 </head>
@@ -186,133 +142,144 @@
 
     <div class="container">
         <h1>Buscador de Clientes</h1>
-        <div class="subtitle">Base de datos: Maria Grande 2026</div>
         
-        <div class="status-box" id="statusBox">
-            <span id="statusText">⏳ Cargando datos locales... Por favor, espera.</span>
+        <!-- SECCIÓN PARA CARGAR EL ARCHIVO -->
+        <div class="upload-section">
+            <p><strong>Paso 1:</strong> Cargá tu archivo Excel o CSV original</p>
+            <input type="file" id="fileInput" accept=".csv">
         </div>
 
-        <div class="search-container">
-            <input type="number" id="searchInput" placeholder="Ingresa el NIS (Ej: 7512398)" oninput="buscarCliente()" disabled>
+        <!-- SECCIÓN DE BÚSQUEDA -->
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Ingresa el NIS (Ej: 7512398)" oninput="buscarCliente()" disabled>
         </div>
 
         <div id="resultados">
-            <div style="text-align: center; color: #7f8c8d; margin-top: 20px;">
-                <p>Esperando a que los datos se carguen...</p>
+            <div style="text-align: center; color: #7f8c8d;">
+                <p>Por favor, carga el archivo CSV para habilitar el buscador.</p>
             </div>
         </div>
     </div>
 
     <script>
+        // Variable global donde se guardarán los datos procesados
         let clientes = [];
 
-        // Función para procesar el texto CSV que viene del archivo datos.js
-        function cargarDatosLocales() {
-            try {
-                // Verificamos si el archivo datos.js se cargó correctamente
-                if (typeof window.datosClientesCSV === 'undefined') {
-                    throw new Error("No se encontró el archivo de datos (datos.js).");
-                }
+        // Escuchar cuando el usuario selecciona un archivo
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
 
-                const csv = window.datosClientesCSV;
-                const lines = csv.trim().split(/\r?\n/);
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const text = event.target.result;
+                
+                // Separar por saltos de línea
+                const lines = text.split(/\r?\n/);
                 const headers = lines[0].split(';').map(h => h.trim());
+                
+                clientes = []; // Limpiar array
 
-                clientes = [];
-
+                // Procesar cada línea
                 for (let i = 1; i < lines.length; i++) {
                     const currentLine = lines[i].split(';');
                     if (currentLine.length < headers.length) continue;
 
                     let obj = {};
                     headers.forEach((header, index) => {
+                        // Limpiar comillas dobles y espacios
                         let val = currentLine[index] ? currentLine[index].replace(/"/g, '').trim() : '';
                         obj[header] = val;
                     });
                     clientes.push(obj);
                 }
 
-                // Actualizar la interfaz
-                document.getElementById('statusText').innerHTML = `✅ <b>${clientes.length}</b> registros cargados correctamente.`;
-                document.getElementById('statusText').parentElement.style.backgroundColor = "#d4edda";
-                document.getElementById('statusText').parentElement.style.borderColor = "#c3e6cb";
-                document.getElementById('statusText').style.color = "#155724";
+                // Habilitar el buscador
+                const searchInput = document.getElementById('searchInput');
+                searchInput.disabled = false;
+                searchInput.focus();
                 
-                document.getElementById('searchInput').disabled = false;
                 document.getElementById('resultados').innerHTML = `
-                    <div style="text-align: center; color: #27ae60; font-weight: bold; margin-top:20px;">
-                        <p>Listo. Ingresa un NIS arriba para buscar.</p>
+                    <div style="text-align: center; color: #27ae60; font-weight: bold;">
+                        <p>✅ Archivo cargado con éxito (${clientes.length} registros).</p>
+                        <p>Escribe un NIS para buscar.</p>
                     </div>
                 `;
+            };
 
-            } catch (error) {
-                console.error(error);
-                document.getElementById('statusText').innerHTML = `❌ Error: ${error.message}`;
-                document.getElementById('statusText').parentElement.style.backgroundColor = "#f8d7da";
-                document.getElementById('statusText').parentElement.style.borderColor = "#f5c6cb";
-                document.getElementById('statusText').style.color = "#721c24";
-            }
-        }
+            reader.onerror = function() {
+                alert("Error al leer el archivo.");
+            };
 
-        // Ejecutar la carga cuando la página termine de abrir
-        window.onload = cargarDatosLocales;
+            // Leer como texto usando ISO-8859-1 para preservar los acentos y la letra Ñ
+            reader.readAsText(file, 'ISO-8859-1'); 
+        });
 
         function buscarCliente() {
             const input = document.getElementById('searchInput').value.trim();
             const resultadosDiv = document.getElementById('resultados');
-            
+            resultadosDiv.innerHTML = '';
+
             if (input === '') {
-                resultadosDiv.innerHTML = '';
+                resultadosDiv.innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS para buscar.</p></div>';
                 return;
             }
 
-            const coincidencias = clientes.filter(c => String(c.NIS).trim() === input);
+            // Buscar en el array
+            const coincidencias = clientes.filter(c => c.NIS === input);
 
             if (coincidencias.length === 0) {
                 resultadosDiv.innerHTML = `<div class="no-results">No se encontró ningún cliente con el NIS: ${input}</div>`;
                 return;
             }
 
-            let htmlResultados = '';
-            
+            // Renderizar resultados
             coincidencias.forEach(cliente => {
                 const lat = cliente['COORDENADA_LATITUD'] || '';
                 const lng = cliente['COORDENADA_LONGITUD'] || '';
                 
                 let linkMaps = '#';
-                let btnClass = 'btn-maps disabled';
+                let btnDisabled = 'style="background-color: #95a5a6; pointer-events: none;"';
                 
+                // Validar coordenadas
                 if (lat !== '' && lng !== '' && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
                     linkMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-                    btnClass = 'btn-maps'; 
+                    btnDisabled = ''; 
                 }
 
-                htmlResultados += `
-                    <div class="card">
-                        <h2>${cliente.NOMBRE || 'Sin Nombre'}</h2>
-                        <div class="info-grid">
-                            <div class="info-item"><strong>NIS:</strong> ${cliente.NIS}</div>
-                            <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
-                            <div class="info-item"><strong>Dirección:</strong> ${cliente.DIRECCION || '-'}</div>
-                            <div class="info-item"><strong>N° Puerta:</strong> ${cliente['N° PUERTA'] || '-'}</div>
-                            <div class="info-item"><strong>SETD:</strong> ${cliente.SETD || '-'}</div>
-                            <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
-                            <div class="info-item"><strong>Coordenadas:</strong> ${lat}, ${lng}</div>
-                        </div>
-                        
-                        <a href="${linkMaps}" target="_blank" class="${btnClass}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                <circle cx="12" cy="10" r="3"></circle>
-                            </svg>
-                            Ver ubicación en Maps
-                        </a>
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h2>${cliente.NOMBRE || 'Sin Nombre'} (NIS: ${cliente.NIS})</h2>
+                    
+                    <div class="info-grid">
+                        <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
+                        <div class="info-item"><strong>Dirección:</strong> ${cliente.DIRECCION || '-'}</div>
+                        <div class="info-item"><strong>N° Puerta:</strong> ${cliente['N° PUERTA'] || '-'}</div>
+                        <div class="info-item"><strong>SETD:</strong> ${cliente.SETD || '-'}</div>
+                        <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
+                        <div class="info-item"><strong>Coordenadas:</strong> ${lat}, ${lng}</div>
                     </div>
-                `;
-            });
 
-            resultadosDiv.innerHTML = htmlResultados;
+                    <a href="${linkMaps}" target="_blank" class="btn-maps" ${btnDisabled}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Ver en Google Maps
+                    </a>
+                `;
+                resultadosDiv.appendChild(card);
+            });
         }
+
+        // Buscar al presionar "Enter"
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                buscarCliente();
+            }
+        });
     </script>
 </body>
 </html>
