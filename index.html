@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buscador de Clientes - SGD</title>
     
-    <!-- Librería para leer el Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <!-- Cargamos nuestro archivo de datos local -->
+    <script src="datos.js"></script>
     
     <style>
         :root {
@@ -189,7 +189,7 @@
         <div class="subtitle">Base de datos: Maria Grande 2026</div>
         
         <div class="status-box" id="statusBox">
-            <span id="statusText">⏳ Descargando datos... Por favor, espera.</span>
+            <span id="statusText">⏳ Cargando datos locales... Por favor, espera.</span>
         </div>
 
         <div class="search-container">
@@ -206,33 +206,39 @@
     <script>
         let clientes = [];
 
-        // ✅ RUTA LOCAL: Busca el archivo Excel en la misma carpeta que este index.html
-        const EXCEL_URL = 'Clientes%20con%20coordenadas-Maria%20Grande%202026.xlsx';
-
-        async function cargarDatosDesdeGitHub() {
+        // Función para procesar el texto CSV que viene del archivo datos.js
+        function cargarDatosLocales() {
             try {
-                const response = await fetch(EXCEL_URL);
-                
-                if (!response.ok) {
-                    throw new Error("No se pudo descargar el archivo Excel. Verifica que esté subido en esta misma carpeta.");
+                // Verificamos si el archivo datos.js se cargó correctamente
+                if (typeof window.datosClientesCSV === 'undefined') {
+                    throw new Error("No se encontró el archivo de datos (datos.js).");
                 }
-                
-                const arrayBuffer = await response.arrayBuffer();
-                
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                
-                clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
+                const csv = window.datosClientesCSV;
+                const lines = csv.trim().split(/\r?\n/);
+                const headers = lines[0].split(';').map(h => h.trim());
+
+                clientes = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const currentLine = lines[i].split(';');
+                    if (currentLine.length < headers.length) continue;
+
+                    let obj = {};
+                    headers.forEach((header, index) => {
+                        let val = currentLine[index] ? currentLine[index].replace(/"/g, '').trim() : '';
+                        obj[header] = val;
+                    });
+                    clientes.push(obj);
+                }
+
+                // Actualizar la interfaz
                 document.getElementById('statusText').innerHTML = `✅ <b>${clientes.length}</b> registros cargados correctamente.`;
                 document.getElementById('statusText').parentElement.style.backgroundColor = "#d4edda";
                 document.getElementById('statusText').parentElement.style.borderColor = "#c3e6cb";
                 document.getElementById('statusText').style.color = "#155724";
                 
-                const searchInput = document.getElementById('searchInput');
-                searchInput.disabled = false;
-                
+                document.getElementById('searchInput').disabled = false;
                 document.getElementById('resultados').innerHTML = `
                     <div style="text-align: center; color: #27ae60; font-weight: bold; margin-top:20px;">
                         <p>Listo. Ingresa un NIS arriba para buscar.</p>
@@ -248,7 +254,8 @@
             }
         }
 
-        window.onload = cargarDatosDesdeGitHub;
+        // Ejecutar la carga cuando la página termine de abrir
+        window.onload = cargarDatosLocales;
 
         function buscarCliente() {
             const input = document.getElementById('searchInput').value.trim();
