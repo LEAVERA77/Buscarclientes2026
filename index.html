@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Clientes por NIS</title>
+    <!-- Librería para leer Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .upload-section {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 2px dashed #3498db;
+        }
+        .upload-section p {
+            margin-top: 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #3498db;
+        }
+        input[type="text"]:disabled {
+            background-color: #eee;
+            cursor: not-allowed;
+        }
+        .card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            font-size: 14px;
+            word-break: break-word;
+        }
+        .info-item strong {
+            color: #555;
+        }
+        .btn-maps {
+            display: inline-flex;
+            align-items: center;
+            background-color: #27ae60;
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-maps:hover {
+            background-color: #219150;
+        }
+        .btn-maps svg {
+            margin-right: 8px;
+            width: 20px;
+            height: 20px;
+        }
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Buscador de Clientes</h1>
+        
+        <!-- SECCIÓN PARA CARGAR EL ARCHIVO EXCEL -->
+        <div class="upload-section">
+            <p><strong>Paso 1:</strong> Cargá tu archivo Excel (Clientes con coordenadas-Maria Grande 2026.xlsx)</p>
+            <input type="file" id="fileInput" accept=".xlsx"><br><br>
+            <span id="fileStatus" style="font-weight: bold; color: #e67e22;">Ningún archivo cargado.</span>
+        </div>
+
+        <!-- SECCIÓN DE BÚSQUEDA -->
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Ingresa el NIS (Ej: 7512398)" oninput="buscarCliente()" disabled>
+        </div>
+
+        <div id="resultados">
+            <div style="text-align: center; color: #7f8c8d;">
+                <p>Por favor, carga el archivo Excel para habilitar el buscador.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variable global donde guardaremos los datos
+        let clientes = [];
+
+        // Escuchar cuando el usuario selecciona el archivo XLSX
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileStatus').textContent = "Leyendo archivo...";
+            document.getElementById('fileStatus').style.color = "#3498db";
+
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                // Leer el libro de Excel
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Tomar la primera hoja (Hoja1)
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Convertir la hoja a un array de objetos JSON
+                // defval: "" asegura que las celdas vacías no rompan el código
+                clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                // Habilitar buscador
+                const searchInput = document.getElementById('searchInput');
+                searchInput.disabled = false;
+                searchInput.focus();
+                
+                document.getElementById('fileStatus').textContent = `✅ Archivo cargado con éxito (${clientes.length} registros).`;
+                document.getElementById('fileStatus').style.color = "#27ae60";
+
+                document.getElementById('resultados').innerHTML = `
+                    <div style="text-align: center; color: #27ae60; font-weight: bold;">
+                        <p>Escribe un NIS para buscar.</p>
+                    </div>
+                `;
+            };
+
+            reader.onerror = function() {
+                alert("Error al leer el archivo.");
+                document.getElementById('fileStatus').textContent = "Error al leer el archivo.";
+                document.getElementById('fileStatus').style.color = "#e74c3c";
+            };
+
+            // Leer como ArrayBuffer (necesario para XLSX)
+            reader.readAsArrayBuffer(file); 
+        });
+
+        function buscarCliente() {
+            const input = document.getElementById('searchInput').value.trim();
+            const resultadosDiv = document.getElementById('resultados');
+            resultadosDiv.innerHTML = '';
+
+            if (input === '') {
+                resultadosDiv.innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS para buscar.</p></div>';
+                return;
+            }
+
+            // Buscar en el array. Nota: Los encabezados del Excel se convierten en las propiedades del objeto.
+            // Por lo tanto, la columna "NIS" será la propiedad cliente.NIS
+            const coincidencias = clientes.filter(c => String(c.NIS).trim() === input);
+
+            if (coincidencias.length === 0) {
+                resultadosDiv.innerHTML = `<div class="no-results">No se encontró ningún cliente con el NIS: ${input}</div>`;
+                return;
+            }
+
+            // Renderizar resultados
+            coincidencias.forEach(cliente => {
+                // Usamos los nombres exactos de tus columnas en el Excel
+                const lat = cliente['COORDENADA_LATITUD'] || '';
+                const lng = cliente['COORDENADA_LONGITUD'] || '';
+                
+                let linkMaps = '#';
+                let btnDisabled = 'style="background-color: #95a5a6; pointer-events: none;"';
+                
+                // Validar coordenadas
+                if (lat !== '' && lng !== '' && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                    linkMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                    btnDisabled = ''; 
+                }
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h2>${cliente.NOMBRE || 'Sin Nombre'} (NIS: ${cliente.NIS})</h2>
+                    
+                    <div class="info-grid">
+                        <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
+                        <div class="info-item"><strong>Dirección:</strong> ${cliente.DIRECCION || '-'}</div>
+                        <div class="info-item"><strong>N° Puerta:</strong> ${cliente['N° PUERTA'] || '-'}</div>
+                        <div class="info-item"><strong>SETD:</strong> ${cliente.SETD || '-'}</div>
+                        <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
+                        <div class="info-item"><strong>Coordenadas:</strong> ${lat}, ${lng}</div>
+                    </div>
+
+                    <a href="${linkMaps}" target="_blank" class="btn-maps" ${btnDisabled}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Ver en Google Maps
+                    </a>
+                `;
+                resultadosDiv.appendChild(card);
+            });
+        }
+
+        // Buscar al presionar "Enter"
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                buscarCliente();
+            }
+        });
+    </script>
+</body>
+</html>
