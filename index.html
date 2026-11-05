@@ -9,7 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     
     <style>
-        /* Estilos optimizados para Android */
         :root {
             --primary-color: #2980b9;
             --success-color: #27ae60;
@@ -49,7 +48,6 @@
             margin-bottom: 20px;
         }
 
-        /* Caja de estado de carga */
         .status-box {
             background-color: #e8f4fd;
             padding: 15px;
@@ -60,7 +58,6 @@
             font-size: 15px;
         }
 
-        /* Caja de búsqueda */
         .search-container {
             position: sticky;
             top: 0;
@@ -98,7 +95,6 @@
             cursor: not-allowed;
         }
 
-        /* Tarjeta de resultados */
         .card {
             background: white;
             border-radius: 12px;
@@ -143,7 +139,6 @@
             width: 110px;
         }
 
-        /* Botón de Google Maps */
         .btn-maps {
             display: flex;
             justify-content: center;
@@ -176,7 +171,6 @@
             box-shadow: none;
         }
 
-        /* Mensajes de error */
         .no-results {
             text-align: center;
             padding: 30px 20px;
@@ -194,17 +188,14 @@
         <h1>Buscador de Clientes</h1>
         <div class="subtitle">Base de datos: Maria Grande 2026</div>
         
-        <!-- Indicador de carga automática -->
         <div class="status-box" id="statusBox">
             <span id="statusText">⏳ Descargando datos... Por favor, espera.</span>
         </div>
 
-        <!-- SECCIÓN DE BÚSQUEDA (Sticky en Android) -->
         <div class="search-container">
             <input type="number" id="searchInput" placeholder="Ingresa el NIS (Ej: 7512398)" oninput="buscarCliente()" disabled>
         </div>
 
-        <!-- Resultados -->
         <div id="resultados">
             <div style="text-align: center; color: #7f8c8d; margin-top: 20px;">
                 <p>Esperando a que los datos se carguen...</p>
@@ -213,16 +204,13 @@
     </div>
 
     <script>
-        // Variable global para almacenar los datos
         let clientes = [];
 
-        // Enlace directo (Raw) al archivo Excel alojado en GitHub
-        const EXCEL_URL = 'https://github.com/LEAVERA77/Buscarclientes2026/raw/refs/heads/main/Clientes%20con%20coordenadas-Maria%20Grande%202026.xlsx';
+        // ✅ URL CORREGIDA: Usa raw.githubusercontent.com para evitar el error de CORS
+        const EXCEL_URL = 'https://raw.githubusercontent.com/LEAVERA77/Buscarclientes2026/main/Clientes%20con%20coordenadas-Maria%20Grande%202026.xlsx';
 
-        // Función para descargar y procesar el archivo Excel
         async function cargarDatosDesdeGitHub() {
             try {
-                // Hacemos la petición para descargar el archivo
                 const response = await fetch(EXCEL_URL);
                 
                 if (!response.ok) {
@@ -231,25 +219,19 @@
                 
                 const arrayBuffer = await response.arrayBuffer();
                 
-                // Procesar el Excel con SheetJS
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 
-                // Convertir la hoja a un array de objetos JSON
                 clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                // Actualizar la interfaz de usuario
                 document.getElementById('statusText').innerHTML = `✅ <b>${clientes.length}</b> registros cargados correctamente.`;
                 document.getElementById('statusText').parentElement.style.backgroundColor = "#d4edda";
                 document.getElementById('statusText').parentElement.style.borderColor = "#c3e6cb";
                 document.getElementById('statusText').style.color = "#155724";
                 
-                // Habilitar el buscador
                 const searchInput = document.getElementById('searchInput');
                 searchInput.disabled = false;
-                
-                // NO hacemos foco automático en móviles porque abre el teclado y tapa la pantalla
                 
                 document.getElementById('resultados').innerHTML = `
                     <div style="text-align: center; color: #27ae60; font-weight: bold; margin-top:20px;">
@@ -266,10 +248,8 @@
             }
         }
 
-        // Iniciar descarga automática al abrir la página
         window.onload = cargarDatosDesdeGitHub;
 
-        // Función principal de búsqueda
         function buscarCliente() {
             const input = document.getElementById('searchInput').value.trim();
             const resultadosDiv = document.getElementById('resultados');
@@ -279,7 +259,6 @@
                 return;
             }
 
-            // Filtrar el array buscando coincidencias exactas de NIS
             const coincidencias = clientes.filter(c => String(c.NIS).trim() === input);
 
             if (coincidencias.length === 0) {
@@ -287,7 +266,6 @@
                 return;
             }
 
-            // Generar las tarjetas para cada coincidencia encontrada
             let htmlResultados = '';
             
             coincidencias.forEach(cliente => {
@@ -297,9 +275,7 @@
                 let linkMaps = '#';
                 let btnClass = 'btn-maps disabled';
                 
-                // Validar que las coordenadas existan y sean válidas
                 if (lat !== '' && lng !== '' && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
-                    // Formato oficial para abrir la app de Google Maps en Android
                     linkMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                     btnClass = 'btn-maps'; 
                 }
