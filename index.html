@@ -4,136 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador de Clientes</title>
-    <!-- Librería para leer Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        .status-container {
-            text-align: center;
-            margin-bottom: 20px;
-            font-weight: bold;
-            padding: 10px;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
+        .status-container { text-align: center; margin-bottom: 20px; font-weight: bold; padding: 10px; border-radius: 8px; }
         .status-loading { background-color: #fcf3cf; color: #b7950b; }
         .status-success { background-color: #d5f5e3; color: #239b56; }
         .status-error { background-color: #fadbd8; color: #cb4335; }
-
-        /* Contenedor de búsqueda para posicionar las sugerencias */
-        .search-container {
-            position: relative;
-            margin-bottom: 20px;
-        }
         
-        input[type="text"] {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 12px 15px;
-            font-size: 16px;
-            border: 2px solid #bdc3c7;
-            border-radius: 8px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
+        .search-container { position: relative; margin-bottom: 20px; }
+        input[type="text"] { width: 100%; box-sizing: border-box; padding: 12px 15px; font-size: 16px; border: 2px solid #bdc3c7; border-radius: 8px; outline: none; }
         input[type="text"]:focus { border-color: #3498db; }
         input[type="text"]:disabled { background-color: #eee; cursor: not-allowed; }
 
-        /* Caja de sugerencias */
-        .suggestions-box {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 1000;
-            max-height: 250px;
-            overflow-y: auto;
-            display: none; /* Se muestra dinámicamente */
-        }
-        .suggestion-item {
-            padding: 10px 15px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-        .suggestion-item:last-child { border-bottom: none; }
-        .suggestion-item:hover {
-            background-color: #e8f4fd;
-        }
-        .suggestion-item strong {
-            color: #2c3e50;
-        }
-        .suggestion-item span {
-            color: #7f8c8d;
-            font-size: 12px;
-            margin-left: 10px;
-        }
+        .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; max-height: 250px; overflow-y: auto; display: none; }
+        .suggestion-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; }
+        .suggestion-item:hover { background-color: #e8f4fd; }
+        .suggestion-item strong { color: #2c3e50; }
+        .suggestion-item span { color: #7f8c8d; font-size: 12px; margin-left: 10px; }
         
-        .card {
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            background-color: #fafafa;
-            animation: fadeIn 0.4s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .card h2 {
-            margin-top: 0;
-            color: #2c3e50;
-            font-size: 18px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        @media (max-width: 600px) {
-            .info-grid { grid-template-columns: 1fr; }
-        }
+        .card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; margin-bottom: 15px; background-color: #fafafa; }
+        .card h2 { margin-top: 0; color: #2c3e50; font-size: 18px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
         .info-item { font-size: 14px; word-break: break-word; }
         .info-item strong { color: #555; }
-        .btn-maps {
-            display: inline-flex;
-            align-items: center;
-            background-color: #27ae60;
-            color: white;
-            padding: 10px 15px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
+        .btn-maps { display: inline-flex; align-items: center; background-color: #27ae60; color: white; padding: 10px 15px; text-decoration: none; border-radius: 6px; font-weight: bold; }
         .btn-maps:hover { background-color: #219150; }
         .btn-maps svg { margin-right: 8px; width: 20px; height: 20px; }
         .no-results { text-align: center; padding: 20px; color: #e74c3c; font-weight: bold; }
@@ -144,31 +42,22 @@
     <div class="container">
         <h1>Buscador de Clientes</h1>
         
-        <!-- Mensaje de estado de carga -->
-        <div id="statusBox" class="status-container status-loading">
-            ⏳ Cargando base de datos de clientes...
-        </div>
+        <div id="statusBox" class="status-container status-loading">⏳ Cargando base de datos de clientes...</div>
 
-        <!-- SECCIÓN DE BÚSQUEDA CON SUGERENCIAS -->
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="Ingresa NIS, Medidor o Nombre..." oninput="procesarEntrada()" onblur="ocultarSugerencias()" disabled autocomplete="off">
             <div id="suggestionsBox" class="suggestions-box"></div>
         </div>
 
         <div id="resultados">
-            <div style="text-align: center; color: #7f8c8d;">
-                <p>Esperando que carguen los datos...</p>
-            </div>
+            <div style="text-align: center; color: #7f8c8d;"><p>Esperando que carguen los datos...</p></div>
         </div>
     </div>
 
     <script>
         let clientes = [];
-
-        // Ruta del archivo en el repositorio
         const excelURL = './clientes.xlsx'; 
 
-        // Se ejecuta automáticamente al abrir la página
         window.onload = function() {
             fetch(excelURL)
                 .then(response => {
@@ -177,14 +66,11 @@
                 })
                 .then(data => {
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                     
-                    const statusBox = document.getElementById('statusBox');
-                    statusBox.className = "status-container status-success";
-                    statusBox.innerHTML = `✅ Base de datos cargada (${clientes.length} registros).`;
+                    document.getElementById('statusBox').className = "status-container status-success";
+                    document.getElementById('statusBox').innerHTML = `✅ Base de datos cargada (${clientes.length} registros).`;
 
                     const searchInput = document.getElementById('searchInput');
                     searchInput.disabled = false;
@@ -197,106 +83,76 @@
                     `;
                 })
                 .catch(error => {
-                    console.error(error);
-                    const statusBox = document.getElementById('statusBox');
-                    statusBox.className = "status-container status-error";
-                    statusBox.innerHTML = `❌ Error al cargar la base de datos. Asegúrate de que el archivo 'clientes.xlsx' esté en el repositorio.`;
+                    document.getElementById('statusBox').className = "status-container status-error";
+                    document.getElementById('statusBox').innerHTML = `❌ Error al cargar la base de datos.`;
                 });
         };
 
-        // Función auxiliar para quitar acentos y mayúsculas
         function normalizarTexto(texto) {
-            return String(texto || '')
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "") // Quita tildes
-                .trim();
+            return String(texto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
         }
 
-        // Algoritmo de Levenshtein (distancia entre dos textos)
         function distanciaLevenshtein(a, b) {
             if(a.length === 0) return b.length; 
             if(b.length === 0) return a.length; 
-
             let matriz = [];
-            for(let i = 0; i <= b.length; i++){
-                matriz[i] = [i];
-            }
-            for(let j = 0; j <= a.length; j++){
-                matriz[0][j] = j;
-            }
+            for(let i = 0; i <= b.length; i++) matriz[i] = [i];
+            for(let j = 0; j <= a.length; j++) matriz[0][j] = j;
             for(let i = 1; i <= b.length; i++){
                 for(let j = 1; j <= a.length; j++){
-                    if(b.charAt(i-1) == a.charAt(j-1)){
-                        matriz[i][j] = matriz[i-1][j-1];
-                    } else {
-                        matriz[i][j] = Math.min(matriz[i-1][j-1] + 1, Math.min(matriz[i][j-1] + 1, matriz[i-1][j] + 1));
-                    }
+                    if(b.charAt(i-1) == a.charAt(j-1)) matriz[i][j] = matriz[i-1][j-1];
+                    else matriz[i][j] = Math.min(matriz[i-1][j-1] + 1, Math.min(matriz[i][j-1] + 1, matriz[i-1][j] + 1));
                 }
             }
             return matriz[b.length][a.length];
         }
 
-        // Función que se ejecuta cada vez que el usuario escribe
         function procesarEntrada() {
             const input = document.getElementById('searchInput').value.trim();
             const suggestionsBox = document.getElementById('suggestionsBox');
             
             if (input === '') {
                 ocultarSugerencias();
-                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS, Medidor o Nombre para buscar.</p></div>';
+                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe para buscar.</p></div>';
                 return;
             }
 
-            // Si es un número (o parece serlo), buscamos primero en NIS o Medidor
+            // Si empieza con número o es todo número, busca por NIS/Medidor
             if (/^\d+$/.test(input)) {
-                ocultarSugerencias(); // Ocultamos las letras si está escribiendo números
+                ocultarSugerencias(); 
                 buscarClienteExacto(input);
                 return;
             }
 
-            // Si es texto (nombre), mostramos sugerencias
+            // Si tiene letras y al menos 3 caracteres, busca por nombre
             if (input.length >= 3) {
                 generarSugerencias(input, suggestionsBox);
             } else {
                 ocultarSugerencias();
-                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Sigue escribiendo para ver sugerencias...</p></div>';
+                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Sigue escribiendo para ver sugerencias de nombres...</p></div>';
             }
         }
 
-        // Genera la lista de sugerencias usando Levenshtein
         function generarSugerencias(input, suggestionsBox) {
             const inputNormalizado = normalizarTexto(input);
             const resultados = [];
 
-            // Evaluamos todos los clientes
             clientes.forEach(cliente => {
-                const nombreOriginal = cliente.NOMBRE || '';
+                // 🚨 AQUÍ ESTÁ LA MAGIA: Busca en varias posibles columnas de nombre
+                const nombreOriginal = cliente.NOMBRE || cliente.Nombre || cliente.nombre || cliente.CLIENTE || cliente.Cliente || cliente['APELLIDO Y NOMBRE'] || cliente['Titular'] || '';
                 const nombreNormalizado = normalizarTexto(nombreOriginal);
 
-                // 1. Coincidencia directa (contiene la palabra)
                 if (nombreNormalizado.includes(inputNormalizado)) {
                     resultados.push({ cliente, distancia: 0, nombreOriginal });
-                } else {
-                    // 2. Coincidencia aproximada (Levenshtein)
-                    // Solo evaluamos si el nombre no está vacío
-                    if (nombreNormalizado.length > 0) {
-                        // Calculamos la distancia de Levenshtein con la primera palabra del nombre o el nombre completo
-                        const distancia = distanciaLevenshtein(inputNormalizado, nombreNormalizado);
-                        
-                        // Si la distancia es menor a la mitad de la longitud del nombre, es una buena sugerencia
-                        // (Ej: si el nombre tiene 10 letras, toleramos hasta 4 errores)
-                        if (distancia <= Math.max(3, Math.floor(nombreNormalizado.length / 2))) {
-                            resultados.push({ cliente, distancia, nombreOriginal });
-                        }
+                } else if (nombreNormalizado.length > 0) {
+                    const distancia = distanciaLevenshtein(inputNormalizado, nombreNormalizado);
+                    if (distancia <= Math.max(3, Math.floor(nombreNormalizado.length / 2))) {
+                        resultados.push({ cliente, distancia, nombreOriginal });
                     }
                 }
             });
 
-            // Ordenamos los resultados: primero las coincidencias exactas, luego por menor distancia de Levenshtein
             resultados.sort((a, b) => a.distancia - b.distancia);
-
-            // Tomamos solo los primeros 5 para no saturar la pantalla
             const topSugerencias = resultados.slice(0, 5);
 
             if (topSugerencias.length === 0) {
@@ -305,16 +161,13 @@
                 return;
             }
 
-            // Armamos el HTML de las sugerencias
             suggestionsBox.innerHTML = '';
             topSugerencias.forEach(res => {
                 const div = document.createElement('div');
                 div.className = 'suggestion-item';
                 div.innerHTML = `<strong>${res.nombreOriginal}</strong> <span>(NIS: ${res.cliente.NIS || '-'})</span>`;
-                
-                // Al hacer clic, rellenamos el input con el nombre exacto y mostramos la tarjeta
                 div.onmousedown = function(e) {
-                    e.preventDefault(); // Evita que el input pierda el foco antes de hacer clic
+                    e.preventDefault();
                     document.getElementById('searchInput').value = res.nombreOriginal;
                     ocultarSugerencias();
                     mostrarTarjeta(res.cliente);
@@ -328,7 +181,6 @@
             document.getElementById('suggestionsBox').style.display = 'none';
         }
 
-        // Busca por NIS o Medidor (coincidencia exacta)
         function buscarClienteExacto(input) {
             const coincidencias = clientes.filter(c => {
                 const nis = String(c.NIS || '').trim();
@@ -343,11 +195,9 @@
                 resultadosDiv.innerHTML = `<div class="no-results">No se encontró ningún cliente con el NIS o Medidor: ${input}</div>`;
                 return;
             }
-
             coincidencias.forEach(cliente => mostrarTarjeta(cliente, true));
         }
 
-        // Renderiza la tarjeta con los datos del cliente
         function mostrarTarjeta(cliente, limpiarAntes = false) {
             const resultadosDiv = document.getElementById('resultados');
             if (limpiarAntes) resultadosDiv.innerHTML = '';
@@ -357,17 +207,18 @@
             
             let linkMaps = '#';
             let btnDisabled = 'style="background-color: #95a5a6; pointer-events: none;"';
-            
             if (lat !== '' && lng !== '' && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
                 linkMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
                 btnDisabled = ''; 
             }
 
+            // Intenta adivinar el nombre de nuevo para mostrarlo en la tarjeta
+            const nombreMostrar = cliente.NOMBRE || cliente.Nombre || cliente.nombre || cliente.CLIENTE || cliente['APELLIDO Y NOMBRE'] || 'Sin Nombre';
+
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
-                <h2>${cliente.NOMBRE || 'Sin Nombre'} <br><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">NIS: ${cliente.NIS || '-'} | Medidor: ${cliente.Medidor || '-'}</span></h2>
-                
+                <h2>${nombreMostrar} <br><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">NIS: ${cliente.NIS || '-'} | Medidor: ${cliente.Medidor || '-'}</span></h2>
                 <div class="info-grid">
                     <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
                     <div class="info-item"><strong>Dirección:</strong> ${cliente.DIRECCION || '-'}</div>
@@ -376,7 +227,6 @@
                     <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
                     <div class="info-item"><strong>Coordenadas:</strong> ${lat && lng ? lat + ', ' + lng : 'No disponibles'}</div>
                 </div>
-
                 <a href="${linkMaps}" target="_blank" rel="noopener noreferrer" class="btn-maps" ${btnDisabled}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -385,24 +235,14 @@
                     Ver en Google Maps
                 </a>
             `;
-            
-            // Si es una búsqueda limpia, reemplazamos. Si viene de un clic, limpiamos y mostramos.
-            if (limpiarAntes) {
-                resultadosDiv.appendChild(card);
-            } else {
-                resultadosDiv.innerHTML = ''; 
-                resultadosDiv.appendChild(card);
-            }
+            resultadosDiv.innerHTML = ''; 
+            resultadosDiv.appendChild(card);
         }
 
-        // Ocultar sugerencias si el usuario hace clic afuera
         document.addEventListener('click', function(e) {
             const searchContainer = document.querySelector('.search-container');
-            if (!searchContainer.contains(e.target)) {
-                ocultarSugerencias();
-            }
+            if (!searchContainer.contains(e.target)) ocultarSugerencias();
         });
-
     </script>
 </body>
 </html>
