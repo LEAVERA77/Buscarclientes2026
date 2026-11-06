@@ -39,13 +39,15 @@
         .status-success { background-color: #d5f5e3; color: #239b56; }
         .status-error { background-color: #fadbd8; color: #cb4335; }
 
-        .search-box {
-            display: flex;
-            gap: 10px;
+        /* Contenedor de búsqueda para posicionar las sugerencias */
+        .search-container {
+            position: relative;
             margin-bottom: 20px;
         }
+        
         input[type="text"] {
-            flex: 1;
+            width: 100%;
+            box-sizing: border-box;
             padding: 12px 15px;
             font-size: 16px;
             border: 2px solid #bdc3c7;
@@ -55,6 +57,41 @@
         }
         input[type="text"]:focus { border-color: #3498db; }
         input[type="text"]:disabled { background-color: #eee; cursor: not-allowed; }
+
+        /* Caja de sugerencias */
+        .suggestions-box {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none; /* Se muestra dinámicamente */
+        }
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover {
+            background-color: #e8f4fd;
+        }
+        .suggestion-item strong {
+            color: #2c3e50;
+        }
+        .suggestion-item span {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-left: 10px;
+        }
         
         .card {
             border: 1px solid #e0e0e0;
@@ -112,9 +149,10 @@
             ⏳ Cargando base de datos de clientes...
         </div>
 
-        <!-- SECCIÓN DE BÚSQUEDA -->
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Ingresa NIS o N° de Medidor..." oninput="buscarCliente()" disabled>
+        <!-- SECCIÓN DE BÚSQUEDA CON SUGERENCIAS -->
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Ingresa NIS, Medidor o Nombre..." oninput="procesarEntrada()" onblur="ocultarSugerencias()" disabled autocomplete="off">
+            <div id="suggestionsBox" class="suggestions-box"></div>
         </div>
 
         <div id="resultados">
@@ -134,9 +172,7 @@
         window.onload = function() {
             fetch(excelURL)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error("No se pudo encontrar el archivo Excel.");
-                    }
+                    if (!response.ok) throw new Error("No se pudo encontrar el archivo Excel.");
                     return response.arrayBuffer();
                 })
                 .then(data => {
@@ -146,7 +182,6 @@
                     
                     clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                     
-                    // Actualizar la interfaz de éxito
                     const statusBox = document.getElementById('statusBox');
                     statusBox.className = "status-container status-success";
                     statusBox.innerHTML = `✅ Base de datos cargada (${clientes.length} registros).`;
@@ -157,7 +192,7 @@
 
                     document.getElementById('resultados').innerHTML = `
                         <div style="text-align: center; color: #27ae60; font-weight: bold;">
-                            <p>Escribe un NIS o N° de Medidor para buscar.</p>
+                            <p>Escribe un NIS, Medidor o Nombre para buscar.</p>
                         </div>
                     `;
                 })
@@ -169,72 +204,205 @@
                 });
         };
 
-        function buscarCliente() {
-            const input = document.getElementById('searchInput').value.trim();
-            const resultadosDiv = document.getElementById('resultados');
-            resultadosDiv.innerHTML = '';
+        // Función auxiliar para quitar acentos y mayúsculas
+        function normalizarTexto(texto) {
+            return String(texto || '')
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") // Quita tildes
+                .trim();
+        }
 
+        // Algoritmo de Levenshtein (distancia entre dos textos)
+        function distanciaLevenshtein(a, b) {
+            if(a.length === 0) return b.length; 
+            if(b.length === 0) return a.length; 
+
+            let matriz = [];
+            for(let i = 0; i <= b.length; i++){
+                matriz[i] = [i];
+            }
+            for(let j = 0; j <= a.length; j++){
+                matriz[0][j] = j;
+            }
+            for(let i = 1; i <= b.length; i++){
+                for(let j = 1; j <= a.length; j++){
+                    if(b.charAt(i-1) == a.charAt(j-1)){
+                        matriz[i][j] = matriz[i-1][j-1];
+                    } else {
+                        matriz[i][j] = Math.min(matriz[i-1][j-1] + 1, Math.min(matriz[i][j-1] + 1, matriz[i-1][j] + 1));
+                    }
+                }
+            }
+            return matriz[b.length][a.length];
+        }
+
+        // Función que se ejecuta cada vez que el usuario escribe
+        function procesarEntrada() {
+            const input = document.getElementById('searchInput').value.trim();
+            const suggestionsBox = document.getElementById('suggestionsBox');
+            
             if (input === '') {
-                resultadosDiv.innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS o N° de Medidor para buscar.</p></div>';
+                ocultarSugerencias();
+                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS, Medidor o Nombre para buscar.</p></div>';
                 return;
             }
 
-            // Busca tanto en la columna NIS como en la columna Medidor
+            // Si es un número (o parece serlo), buscamos primero en NIS o Medidor
+            if (/^\d+$/.test(input)) {
+                ocultarSugerencias(); // Ocultamos las letras si está escribiendo números
+                buscarClienteExacto(input);
+                return;
+            }
+
+            // Si es texto (nombre), mostramos sugerencias
+            if (input.length >= 3) {
+                generarSugerencias(input, suggestionsBox);
+            } else {
+                ocultarSugerencias();
+                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Sigue escribiendo para ver sugerencias...</p></div>';
+            }
+        }
+
+        // Genera la lista de sugerencias usando Levenshtein
+        function generarSugerencias(input, suggestionsBox) {
+            const inputNormalizado = normalizarTexto(input);
+            const resultados = [];
+
+            // Evaluamos todos los clientes
+            clientes.forEach(cliente => {
+                const nombreOriginal = cliente.NOMBRE || '';
+                const nombreNormalizado = normalizarTexto(nombreOriginal);
+
+                // 1. Coincidencia directa (contiene la palabra)
+                if (nombreNormalizado.includes(inputNormalizado)) {
+                    resultados.push({ cliente, distancia: 0, nombreOriginal });
+                } else {
+                    // 2. Coincidencia aproximada (Levenshtein)
+                    // Solo evaluamos si el nombre no está vacío
+                    if (nombreNormalizado.length > 0) {
+                        // Calculamos la distancia de Levenshtein con la primera palabra del nombre o el nombre completo
+                        const distancia = distanciaLevenshtein(inputNormalizado, nombreNormalizado);
+                        
+                        // Si la distancia es menor a la mitad de la longitud del nombre, es una buena sugerencia
+                        // (Ej: si el nombre tiene 10 letras, toleramos hasta 4 errores)
+                        if (distancia <= Math.max(3, Math.floor(nombreNormalizado.length / 2))) {
+                            resultados.push({ cliente, distancia, nombreOriginal });
+                        }
+                    }
+                }
+            });
+
+            // Ordenamos los resultados: primero las coincidencias exactas, luego por menor distancia de Levenshtein
+            resultados.sort((a, b) => a.distancia - b.distancia);
+
+            // Tomamos solo los primeros 5 para no saturar la pantalla
+            const topSugerencias = resultados.slice(0, 5);
+
+            if (topSugerencias.length === 0) {
+                suggestionsBox.innerHTML = '<div class="suggestion-item">No se encontraron nombres parecidos</div>';
+                suggestionsBox.style.display = 'block';
+                return;
+            }
+
+            // Armamos el HTML de las sugerencias
+            suggestionsBox.innerHTML = '';
+            topSugerencias.forEach(res => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerHTML = `<strong>${res.nombreOriginal}</strong> <span>(NIS: ${res.cliente.NIS || '-'})</span>`;
+                
+                // Al hacer clic, rellenamos el input con el nombre exacto y mostramos la tarjeta
+                div.onmousedown = function(e) {
+                    e.preventDefault(); // Evita que el input pierda el foco antes de hacer clic
+                    document.getElementById('searchInput').value = res.nombreOriginal;
+                    ocultarSugerencias();
+                    mostrarTarjeta(res.cliente);
+                };
+                suggestionsBox.appendChild(div);
+            });
+            suggestionsBox.style.display = 'block';
+        }
+
+        function ocultarSugerencias() {
+            document.getElementById('suggestionsBox').style.display = 'none';
+        }
+
+        // Busca por NIS o Medidor (coincidencia exacta)
+        function buscarClienteExacto(input) {
             const coincidencias = clientes.filter(c => {
                 const nis = String(c.NIS || '').trim();
                 const medidor = String(c.Medidor || '').trim();
                 return nis === input || medidor === input;
             });
 
+            const resultadosDiv = document.getElementById('resultados');
+            resultadosDiv.innerHTML = '';
+
             if (coincidencias.length === 0) {
                 resultadosDiv.innerHTML = `<div class="no-results">No se encontró ningún cliente con el NIS o Medidor: ${input}</div>`;
                 return;
             }
 
-            coincidencias.forEach(cliente => {
-                const lat = cliente['COORDENADA_LATITUD'] || '';
-                const lng = cliente['COORDENADA_LONGITUD'] || '';
-                
-                let linkMaps = '#';
-                let btnDisabled = 'style="background-color: #95a5a6; pointer-events: none;"';
-                
-                if (lat !== '' && lng !== '' && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
-                    linkMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-                    btnDisabled = ''; 
-                }
-
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <h2>${cliente.NOMBRE || 'Sin Nombre'} <br><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">NIS: ${cliente.NIS || '-'} | Medidor: ${cliente.Medidor || '-'}</span></h2>
-                    
-                    <div class="info-grid">
-                        <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
-                        <div class="info-item"><strong>Dirección:</strong> ${cliente.DIRECCION || '-'}</div>
-                        <div class="info-item"><strong>N° Puerta:</strong> ${cliente['N° PUERTA'] || '-'}</div>
-                        <div class="info-item"><strong>SETD:</strong> ${cliente.SETD || '-'}</div>
-                        <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
-                        <div class="info-item"><strong>Coordenadas:</strong> ${lat && lng ? lat + ', ' + lng : 'No disponibles'}</div>
-                    </div>
-
-                    <a href="${linkMaps}" target="_blank" rel="noopener noreferrer" class="btn-maps" ${btnDisabled}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                            <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                        Ver en Google Maps
-                    </a>
-                `;
-                resultadosDiv.appendChild(card);
-            });
+            coincidencias.forEach(cliente => mostrarTarjeta(cliente, true));
         }
 
-        // Buscar al presionar "Enter"
-        document.getElementById('searchInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                buscarCliente();
+        // Renderiza la tarjeta con los datos del cliente
+        function mostrarTarjeta(cliente, limpiarAntes = false) {
+            const resultadosDiv = document.getElementById('resultados');
+            if (limpiarAntes) resultadosDiv.innerHTML = '';
+
+            const lat = cliente['COORDENADA_LATITUD'] || '';
+            const lng = cliente['COORDENADA_LONGITUD'] || '';
+            
+            let linkMaps = '#';
+            let btnDisabled = 'style="background-color: #95a5a6; pointer-events: none;"';
+            
+            if (lat !== '' && lng !== '' && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                linkMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                btnDisabled = ''; 
+            }
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <h2>${cliente.NOMBRE || 'Sin Nombre'} <br><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">NIS: ${cliente.NIS || '-'} | Medidor: ${cliente.Medidor || '-'}</span></h2>
+                
+                <div class="info-grid">
+                    <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
+                    <div class="info-item"><strong>Dirección:</strong> ${cliente.DIRECCION || '-'}</div>
+                    <div class="info-item"><strong>N° Puerta:</strong> ${cliente['N° PUERTA'] || '-'}</div>
+                    <div class="info-item"><strong>SETD:</strong> ${cliente.SETD || '-'}</div>
+                    <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
+                    <div class="info-item"><strong>Coordenadas:</strong> ${lat && lng ? lat + ', ' + lng : 'No disponibles'}</div>
+                </div>
+
+                <a href="${linkMaps}" target="_blank" rel="noopener noreferrer" class="btn-maps" ${btnDisabled}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    Ver en Google Maps
+                </a>
+            `;
+            
+            // Si es una búsqueda limpia, reemplazamos. Si viene de un clic, limpiamos y mostramos.
+            if (limpiarAntes) {
+                resultadosDiv.appendChild(card);
+            } else {
+                resultadosDiv.innerHTML = ''; 
+                resultadosDiv.appendChild(card);
+            }
+        }
+
+        // Ocultar sugerencias si el usuario hace clic afuera
+        document.addEventListener('click', function(e) {
+            const searchContainer = document.querySelector('.search-container');
+            if (!searchContainer.contains(e.target)) {
+                ocultarSugerencias();
             }
         });
+
     </script>
 </body>
 </html>
