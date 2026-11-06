@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Clientes por NIS</title>
+    <title>Buscador de Clientes por NIS o Medidor</title>
     <!-- Librería para leer Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <style>
@@ -118,6 +118,12 @@
             color: #e74c3c;
             font-weight: bold;
         }
+        /* Ajuste para que en celulares se vea en una columna */
+        @media (max-width: 600px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -134,7 +140,8 @@
 
         <!-- SECCIÓN DE BÚSQUEDA -->
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Ingresa el NIS (Ej: 7512398)" oninput="buscarCliente()" disabled>
+            <!-- CAMBIAMOS EL PLACEHOLDER PARA INDICAR QUE BUSCA POR AMBOS -->
+            <input type="text" id="searchInput" placeholder="Ingresa NIS o N° de Medidor..." oninput="buscarCliente()" disabled>
         </div>
 
         <div id="resultados">
@@ -160,18 +167,12 @@
             
             reader.onload = function(event) {
                 const data = new Uint8Array(event.target.result);
-                // Leer el libro de Excel
                 const workbook = XLSX.read(data, { type: 'array' });
-
-                // Tomar la primera hoja (Hoja1)
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
 
-                // Convertir la hoja a un array de objetos JSON
-                // defval: "" asegura que las celdas vacías no rompan el código
                 clientes = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                // Habilitar buscador
                 const searchInput = document.getElementById('searchInput');
                 searchInput.disabled = false;
                 searchInput.focus();
@@ -181,7 +182,7 @@
 
                 document.getElementById('resultados').innerHTML = `
                     <div style="text-align: center; color: #27ae60; font-weight: bold;">
-                        <p>Escribe un NIS para buscar.</p>
+                        <p>Escribe un NIS o N° de Medidor para buscar.</p>
                     </div>
                 `;
             };
@@ -192,7 +193,6 @@
                 document.getElementById('fileStatus').style.color = "#e74c3c";
             };
 
-            // Leer como ArrayBuffer (necesario para XLSX)
             reader.readAsArrayBuffer(file); 
         });
 
@@ -202,22 +202,27 @@
             resultadosDiv.innerHTML = '';
 
             if (input === '') {
-                resultadosDiv.innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS para buscar.</p></div>';
+                resultadosDiv.innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS o N° de Medidor para buscar.</p></div>';
                 return;
             }
 
-            // Buscar en el array. Nota: Los encabezados del Excel se convierten en las propiedades del objeto.
-            // Por lo tanto, la columna "NIS" será la propiedad cliente.NIS
-            const coincidencias = clientes.filter(c => String(c.NIS).trim() === input);
+            // 🔥 AQUÍ ESTÁ LA MAGIA: Busca en NIS O en Medidor 🔥
+            const coincidencias = clientes.filter(c => {
+                // Convertimos a String y limpiamos espacios por si el Excel tiene celdas con formato raro
+                const nis = String(c.NIS || '').trim();
+                const medidor = String(c.Medidor || '').trim();
+                
+                // Retorna true si el input coincide con el NIS o con el Medidor
+                return nis === input || medidor === input;
+            });
 
             if (coincidencias.length === 0) {
-                resultadosDiv.innerHTML = `<div class="no-results">No se encontró ningún cliente con el NIS: ${input}</div>`;
+                resultadosDiv.innerHTML = `<div class="no-results">No se encontró ningún cliente con el NIS o Medidor: ${input}</div>`;
                 return;
             }
 
             // Renderizar resultados
             coincidencias.forEach(cliente => {
-                // Usamos los nombres exactos de tus columnas en el Excel
                 const lat = cliente['COORDENADA_LATITUD'] || '';
                 const lng = cliente['COORDENADA_LONGITUD'] || '';
                 
@@ -233,7 +238,7 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
-                    <h2>${cliente.NOMBRE || 'Sin Nombre'} (NIS: ${cliente.NIS})</h2>
+                    <h2>${cliente.NOMBRE || 'Sin Nombre'} <br><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">NIS: ${cliente.NIS || '-'} | Medidor: ${cliente.Medidor || '-'}</span></h2>
                     
                     <div class="info-grid">
                         <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
@@ -241,10 +246,10 @@
                         <div class="info-item"><strong>N° Puerta:</strong> ${cliente['N° PUERTA'] || '-'}</div>
                         <div class="info-item"><strong>SETD:</strong> ${cliente.SETD || '-'}</div>
                         <div class="info-item"><strong>Localidad:</strong> ${cliente.LOCALIDAD || '-'}</div>
-                        <div class="info-item"><strong>Coordenadas:</strong> ${lat}, ${lng}</div>
+                        <div class="info-item"><strong>Coordenadas:</strong> ${lat && lng ? lat + ', ' + lng : 'No disponibles'}</div>
                     </div>
 
-                    <a href="${linkMaps}" target="_blank" class="btn-maps" ${btnDisabled}>
+                    <a href="${linkMaps}" target="_blank" rel="noopener noreferrer" class="btn-maps" ${btnDisabled}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
