@@ -1,11 +1,10 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso Restringido</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
         
@@ -79,47 +78,37 @@
     </div>
 
     <script>
-        // 🔐 CONFIGURACIÓN DEL USUARIO Y CONTRASEÑA
-        // Usuario: admin
-        // Contraseña: enersamg2026
+        // 🔐 CONFIGURACIÓN DIRECTA (Sin Hash para evitar fallos)
         const USUARIO_VALIDO = "admin";
-        // Hash SHA-256 de "enersamg2026"
-        const HASH_PASS_VALIDO = "df318554d28fc67f675d43b6bc3be8eb6748f07b43ee6f24660bb32ad7773ed4"; 
+        const PASS_VALIDA = "enersamg2026"; 
 
         let clientes = [];
         const excelURL = './clientes.xlsx'; 
         let datosCargados = false;
 
         function verificarLogin() {
-            const user = document.getElementById('userInput').value;
-            const pass = document.getElementById('passInput').value;
+            const user = document.getElementById('userInput').value.trim();
+            const pass = document.getElementById('passInput').value.trim();
             const errorMsg = document.getElementById('loginError');
 
-            // Encriptamos la contraseña ingresada
-            const hashIngresado = CryptoJS.SHA256(pass).toString();
-
-            if (user === USUARIO_VALIDO && hashIngresado === HASH_PASS_VALIDO) {
-                // Login exitoso
+            // Comparamos directamente el texto
+            if (user === USUARIO_VALIDO && pass === PASS_VALIDA) {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'block';
                 
-                // Cargar datos solo después de loguearse
                 if (!datosCargados) {
                     cargarExcel();
                 }
             } else {
-                // Error de login
                 errorMsg.style.display = 'block';
                 document.getElementById('passInput').value = '';
             }
         }
 
-        // Permitir presionar "Enter" en el login
         document.getElementById('passInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') verificarLogin();
         });
 
-        // FUNCIÓN PARA CARGAR EL EXCEL
         function cargarExcel() {
             fetch(excelURL)
                 .then(response => {
@@ -152,7 +141,6 @@
         }
 
         // --- LÓGICA DEL BUSCADOR ---
-
         function normalizarTexto(texto) {
             return String(texto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
         }
