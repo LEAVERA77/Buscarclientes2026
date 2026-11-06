@@ -83,7 +83,7 @@
         // Usuario: admin
         // Contraseña: enersamg2026
         const USUARIO_VALIDO = "admin";
-        // El hash SHA-256 de "enersamg2026" (Encriptado para que nadie lo lea)
+        // Hash SHA-256 de "enersamg2026"
         const HASH_PASS_VALIDO = "df318554d28fc67f675d43b6bc3be8eb6748f07b43ee6f24660bb32ad7773ed4"; 
 
         let clientes = [];
@@ -95,7 +95,7 @@
             const pass = document.getElementById('passInput').value;
             const errorMsg = document.getElementById('loginError');
 
-            // Encriptamos la contraseña ingresada para compararla con el hash seguro
+            // Encriptamos la contraseña ingresada
             const hashIngresado = CryptoJS.SHA256(pass).toString();
 
             if (user === USUARIO_VALIDO && hashIngresado === HASH_PASS_VALIDO) {
@@ -119,7 +119,7 @@
             if (e.key === 'Enter') verificarLogin();
         });
 
-        // FUNCIÓN PARA CARGAR EL EXCEL (Solo se ejecuta tras el login)
+        // FUNCIÓN PARA CARGAR EL EXCEL
         function cargarExcel() {
             fetch(excelURL)
                 .then(response => {
@@ -151,7 +151,7 @@
                 });
         }
 
-        // --- LÓGICA DEL BUSCADOR (NIS, MEDIDOR Y NOMBRE) ---
+        // --- LÓGICA DEL BUSCADOR ---
 
         function normalizarTexto(texto) {
             return String(texto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
