@@ -3,11 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Clientes</title>
+    <title>Acceso Restringido</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        /* Pantalla de Login */
+        .login-container {
+            max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;
+        }
+        .login-container h2 { color: #2c3e50; margin-bottom: 20px; }
+        .login-container input { width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 15px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 16px; outline: none; }
+        .login-container input:focus { border-color: #3498db; }
+        .login-container button { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        .login-container button:hover { background-color: #2980b9; }
+        .error-msg { color: #e74c3c; font-size: 14px; margin-bottom: 15px; display: none; }
+
+        /* Aplicación (Oculta por defecto) */
+        #appContainer { display: none; max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
         .status-container { text-align: center; margin-bottom: 20px; font-weight: bold; padding: 10px; border-radius: 8px; }
         .status-loading { background-color: #fcf3cf; color: #b7950b; }
@@ -39,7 +53,17 @@
 </head>
 <body>
 
-    <div class="container">
+    <!-- PANTALLA DE LOGIN -->
+    <div class="login-container" id="loginScreen">
+        <h2>Ingreso al Sistema</h2>
+        <div id="loginError" class="error-msg">Usuario o contraseña incorrectos.</div>
+        <input type="text" id="userInput" placeholder="Usuario" autocomplete="off">
+        <input type="password" id="passInput" placeholder="Contraseña" autocomplete="off">
+        <button onclick="verificarLogin()">Ingresar</button>
+    </div>
+
+    <!-- APLICACIÓN -->
+    <div id="appContainer">
         <h1>Buscador de Clientes</h1>
         
         <div id="statusBox" class="status-container status-loading">⏳ Cargando base de datos de clientes...</div>
@@ -55,10 +79,48 @@
     </div>
 
     <script>
+        // 🔐 CONFIGURACIÓN DEL USUARIO Y CONTRASEÑA
+        // Usuario: admin
+        // Contraseña: enersamg2026
+        const USUARIO_VALIDO = "admin";
+        // El hash SHA-256 de "enersamg2026" (Encriptado para que nadie lo lea)
+        const HASH_PASS_VALIDO = "df318554d28fc67f675d43b6bc3be8eb6748f07b43ee6f24660bb32ad7773ed4"; 
+
         let clientes = [];
         const excelURL = './clientes.xlsx'; 
+        let datosCargados = false;
 
-        window.onload = function() {
+        function verificarLogin() {
+            const user = document.getElementById('userInput').value;
+            const pass = document.getElementById('passInput').value;
+            const errorMsg = document.getElementById('loginError');
+
+            // Encriptamos la contraseña ingresada para compararla con el hash seguro
+            const hashIngresado = CryptoJS.SHA256(pass).toString();
+
+            if (user === USUARIO_VALIDO && hashIngresado === HASH_PASS_VALIDO) {
+                // Login exitoso
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                
+                // Cargar datos solo después de loguearse
+                if (!datosCargados) {
+                    cargarExcel();
+                }
+            } else {
+                // Error de login
+                errorMsg.style.display = 'block';
+                document.getElementById('passInput').value = '';
+            }
+        }
+
+        // Permitir presionar "Enter" en el login
+        document.getElementById('passInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verificarLogin();
+        });
+
+        // FUNCIÓN PARA CARGAR EL EXCEL (Solo se ejecuta tras el login)
+        function cargarExcel() {
             fetch(excelURL)
                 .then(response => {
                     if (!response.ok) throw new Error("No se pudo encontrar el archivo Excel.");
@@ -81,12 +143,15 @@
                             <p>Escribe un NIS, Medidor o Nombre para buscar.</p>
                         </div>
                     `;
+                    datosCargados = true;
                 })
                 .catch(error => {
                     document.getElementById('statusBox').className = "status-container status-error";
                     document.getElementById('statusBox').innerHTML = `❌ Error al cargar la base de datos.`;
                 });
-        };
+        }
+
+        // --- LÓGICA DEL BUSCADOR (NIS, MEDIDOR Y NOMBRE) ---
 
         function normalizarTexto(texto) {
             return String(texto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -113,23 +178,21 @@
             
             if (input === '') {
                 ocultarSugerencias();
-                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe para buscar.</p></div>';
+                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Escribe un NIS, Medidor o Nombre para buscar.</p></div>';
                 return;
             }
 
-            // Si empieza con número o es todo número, busca por NIS/Medidor
             if (/^\d+$/.test(input)) {
                 ocultarSugerencias(); 
                 buscarClienteExacto(input);
                 return;
             }
 
-            // Si tiene letras y al menos 3 caracteres, busca por nombre
             if (input.length >= 3) {
                 generarSugerencias(input, suggestionsBox);
             } else {
                 ocultarSugerencias();
-                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Sigue escribiendo para ver sugerencias de nombres...</p></div>';
+                document.getElementById('resultados').innerHTML = '<div style="text-align: center; color: #7f8c8d;"><p>Sigue escribiendo para ver sugerencias...</p></div>';
             }
         }
 
@@ -138,15 +201,14 @@
             const resultados = [];
 
             clientes.forEach(cliente => {
-                // 🚨 AQUÍ ESTÁ LA MAGIA: Busca en varias posibles columnas de nombre
-                const nombreOriginal = cliente.NOMBRE || cliente.Nombre || cliente.nombre || cliente.CLIENTE || cliente.Cliente || cliente['APELLIDO Y NOMBRE'] || cliente['Titular'] || '';
+                const nombreOriginal = cliente.NOMBRE || '';
                 const nombreNormalizado = normalizarTexto(nombreOriginal);
 
                 if (nombreNormalizado.includes(inputNormalizado)) {
                     resultados.push({ cliente, distancia: 0, nombreOriginal });
                 } else if (nombreNormalizado.length > 0) {
                     const distancia = distanciaLevenshtein(inputNormalizado, nombreNormalizado);
-                    if (distancia <= Math.max(3, Math.floor(nombreNormalizado.length / 2))) {
+                    if (distancia <= Math.max(3, Math.floor(nombreNormalizado.length / 3))) {
                         resultados.push({ cliente, distancia, nombreOriginal });
                     }
                 }
@@ -212,13 +274,10 @@
                 btnDisabled = ''; 
             }
 
-            // Intenta adivinar el nombre de nuevo para mostrarlo en la tarjeta
-            const nombreMostrar = cliente.NOMBRE || cliente.Nombre || cliente.nombre || cliente.CLIENTE || cliente['APELLIDO Y NOMBRE'] || 'Sin Nombre';
-
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
-                <h2>${nombreMostrar} <br><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">NIS: ${cliente.NIS || '-'} | Medidor: ${cliente.Medidor || '-'}</span></h2>
+                <h2>${cliente.NOMBRE || 'Sin Nombre'} <br><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">NIS: ${cliente.NIS || '-'} | Medidor: ${cliente.Medidor || '-'}</span></h2>
                 <div class="info-grid">
                     <div class="info-item"><strong>Medidor:</strong> ${cliente.Medidor || '-'}</div>
                     <div class="info-item"><strong>Dirección:</strong> ${cliente.DIRECCION || '-'}</div>
